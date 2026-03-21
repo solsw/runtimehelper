@@ -54,7 +54,17 @@ func TestCallerName(t *testing.T) {
 	})
 }
 
-func TestJustName(t *testing.T) {
+type Class struct{}
+
+func (c *Class) Method1() string {
+	return NthCallerName(1)
+}
+
+func (c Class) Method2() string {
+	return NthCallerName(1)
+}
+
+func TestJustFunctionName(t *testing.T) {
 	tests := []struct {
 		name string
 		nm   string
@@ -68,12 +78,20 @@ func TestJustName(t *testing.T) {
 			nm:   NthCallerName(2),
 			want: "tRunner",
 		},
+		{name: "Method1",
+			nm:   (&Class{}).Method1(),
+			want: "(*Class).Method1",
+		},
+		{name: "Method2",
+			nm:   Class{}.Method2(),
+			want: "Class.Method2",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := JustName(tt.nm)
+			got := JustFunctionName(tt.nm)
 			if got != tt.want {
-				t.Errorf("JustName() = %v, want %v", got, tt.want)
+				t.Errorf("JustFunctionName() = %v, want %v", got, tt.want)
 			}
 		})
 	}

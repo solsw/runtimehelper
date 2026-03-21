@@ -33,21 +33,21 @@ func CallerCallerName() string {
 	return NthCallerName(3)
 }
 
-// JustNameWithPackage returns just function name preceeded with package name
+// JustPackageFunctionName returns just function name preceeded with package name
 // of the full function name returned by [Func.Name].
 //
 // [Func.Name]: https://pkg.go.dev/runtime#Func.Name
-func JustNameWithPackage(nm string) string {
+func JustPackageFunctionName(nm string) string {
 	r := path.Base(nm)
 	r, _, _ = strings.Cut(r, "[")
 	return r
 }
 
-// JustName returns just function name of the full function name returned by [Func.Name].
+// JustFunctionName returns just function name of the full function name returned by [Func.Name].
 //
 // [Func.Name]: https://pkg.go.dev/runtime#Func.Name
-func JustName(nm string) string {
-	r := JustNameWithPackage(nm)
+func JustFunctionName(nm string) string {
+	r := JustPackageFunctionName(nm)
 	_, r, _ = strings.Cut(r, ".")
 	return r
 }
