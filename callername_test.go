@@ -56,7 +56,7 @@ func TestCallerName(t *testing.T) {
 
 type Class struct{}
 
-func (c *Class) Method1() string {
+func (*Class) Method1() string {
 	return NthCallerName(1)
 }
 
