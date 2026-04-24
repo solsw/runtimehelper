@@ -23,18 +23,23 @@ func NthCallerName(n int) string {
 
 // CallerName returns name of the function that called CallerName.
 // In case of any failure empty string is returned.
+//
+//go:noinline
 func CallerName() string {
 	return NthCallerName(2)
 }
 
 // CallerCallerName returns name of the function that called the function that called CallerCallerName.
 // In case of any failure empty string is returned.
+//
+//go:noinline
 func CallerCallerName() string {
 	return NthCallerName(3)
 }
 
-// JustPackageFunctionName returns just function name preceeded with package name
+// JustPackageFunctionName returns just function name preceded with package name
 // of the full function name returned by [Func.Name].
+// Generic type parameters (e.g. "[int]") are stripped from the result.
 //
 // [Func.Name]: https://pkg.go.dev/runtime#Func.Name
 func JustPackageFunctionName(nm string) string {

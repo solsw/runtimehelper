@@ -23,14 +23,6 @@ func TestNthCallerName(t *testing.T) {
 			args: args{n: 1},
 			want: "runtimehelper.TestNthCallerName.func1",
 		},
-		{name: "2",
-			args: args{n: 2},
-			want: "testing.tRunner",
-		},
-		{name: "3",
-			args: args{n: 3},
-			want: "runtime.goexit",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -40,6 +32,12 @@ func TestNthCallerName(t *testing.T) {
 				t.Errorf("NthCallerName() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNthCallerNameOutOfRange(t *testing.T) {
+	if got := NthCallerName(999); got != "" {
+		t.Errorf("NthCallerName(999) = %q, want %q", got, "")
 	}
 }
 
@@ -54,6 +52,20 @@ func TestCallerName(t *testing.T) {
 	})
 }
 
+//go:noinline
+func helperCallerCallerName() string {
+	return CallerCallerName()
+}
+
+func TestCallerCallerName(t *testing.T) {
+	pc, _, _, _ := runtime.Caller(0)
+	want := runtime.FuncForPC(pc).Name()
+	got := helperCallerCallerName()
+	if got != want {
+		t.Errorf("CallerCallerName() got = %v, want %v", got, want)
+	}
+}
+
 type Class struct{}
 
 func (*Class) Method1() string {
@@ -62,6 +74,43 @@ func (*Class) Method1() string {
 
 func (c Class) Method2() string {
 	return NthCallerName(1)
+}
+
+func TestJustPackageFunctionName(t *testing.T) {
+	tests := []struct {
+		name string
+		nm   string
+		want string
+	}{
+		{name: "full path",
+			nm:   "github.com/solsw/pkg.Foo",
+			want: "pkg.Foo",
+		},
+		{name: "generic",
+			nm:   "github.com/solsw/pkg.Foo[int,string]",
+			want: "pkg.Foo",
+		},
+		{name: "no path separator",
+			nm:   "pkg.Foo",
+			want: "pkg.Foo",
+		},
+		{name: "no dot",
+			nm:   "Foo",
+			want: "Foo",
+		},
+		{name: "empty",
+			nm:   "",
+			want: ".",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := JustPackageFunctionName(tt.nm)
+			if got != tt.want {
+				t.Errorf("JustPackageFunctionName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestJustFunctionName(t *testing.T) {
@@ -74,9 +123,9 @@ func TestJustFunctionName(t *testing.T) {
 			nm:   NthCallerName(0),
 			want: "NthCallerName",
 		},
-		{name: "2",
-			nm:   NthCallerName(2),
-			want: "tRunner",
+		{name: "self",
+			nm:   NthCallerName(1),
+			want: "TestJustFunctionName",
 		},
 		{name: "Method1",
 			nm:   (&Class{}).Method1(),
@@ -85,6 +134,18 @@ func TestJustFunctionName(t *testing.T) {
 		{name: "Method2",
 			nm:   Class{}.Method2(),
 			want: "Class.Method2",
+		},
+		{name: "generic",
+			nm:   "github.com/solsw/pkg.Foo[int,string]",
+			want: "Foo",
+		},
+		{name: "no dot",
+			nm:   "Foo",
+			want: "",
+		},
+		{name: "empty",
+			nm:   "",
+			want: "",
 		},
 	}
 	for _, tt := range tests {
