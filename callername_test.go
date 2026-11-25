@@ -1,6 +1,7 @@
 package runtimehelper
 
 import (
+	"math"
 	"path"
 	"runtime"
 	"testing"
@@ -36,8 +37,10 @@ func TestNthCallerName(t *testing.T) {
 }
 
 func TestNthCallerNameOutOfRange(t *testing.T) {
-	if got := NthCallerName(999); got != "" {
-		t.Errorf("NthCallerName(999) = %q, want %q", got, "")
+	for _, n := range []int{-1, 999, math.MaxInt} {
+		if got := NthCallerName(n); got != "" {
+			t.Errorf("NthCallerName(%d) = %q, want %q", n, got, "")
+		}
 	}
 }
 

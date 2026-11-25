@@ -27,24 +27,23 @@ The package provides two groups of helpers:
 
 #### `NthCallerName(n int) string`
 
-Returns the name of the n-th caller function of `NthCallerName`. On any failure an empty string is returned. The meaning of `n` matches [`runtime.Caller`](https://pkg.go.dev/runtime#Caller): `0` identifies `NthCallerName` itself, `1` its caller, and so on.
+Returns the full name of the function at depth `n`. If `main.main` calls `main.work`, the following calls inside `work` identify these functions.
 
-```go
-func work() string {
-	return runtimehelper.NthCallerName(1) // "...work" — work itself (the direct caller)
-}
-```
+| Call inside `work` | Function identified |
+| --- | --- |
+| `NthCallerName(0)` | `runtimehelper.NthCallerName` (including its import path) |
+| `NthCallerName(1)` or `CallerName()` | `main.work` |
+| `NthCallerName(2)` or `CallerCallerName()` | `main.main` |
 
-`NthCallerName(2)` from inside `work` would instead return the name of whoever called `work`.
+A negative depth or a depth beyond the available stack frames returns `""`. This includes `-1` and `math.MaxInt`. All three caller helpers also return `""` if the runtime cannot resolve the function name.
 
 #### `CallerName() string`
 
 Returns the name of the function that called `CallerName`.
 
 ```go
-func work() {
-	name := runtimehelper.CallerName() // name of work's caller
-	_ = name
+func work() string {
+	return runtimehelper.CallerName() // "main.work" in package main
 }
 ```
 
@@ -56,31 +55,33 @@ Returns the name of the function that called the function that called `CallerCal
 
 ### Name trimming
 
-These operate on the full function name string returned by [`runtime.Func.Name`](https://pkg.go.dev/runtime#Func.Name), e.g. `"github.com/solsw/pkg.Foo"`.
+Both helpers accept a full function name from [`runtime.Func.Name`](https://pkg.go.dev/runtime#Func.Name). For a generic receiver such as `*Box[int]`, the runtime can report the method as `pkg.(*Box[...]).Get`. The literal `[...]` means the type arguments were omitted from the name. Both helpers remove that bracketed portion and keep the receiver and method. They also handle explicit type arguments, including nested types and import paths.
 
 #### `JustPackageFunctionName(funcName string) string`
 
-Returns just the function name preceded by the package name. Generic type parameters (e.g. `"[int]"`) are stripped.
+Returns just the function name preceded by the package name. Generic type arguments (e.g. `"[int]"`) are stripped.
 
 | Input | Output |
 | --- | --- |
 | `github.com/solsw/pkg.Foo` | `pkg.Foo` |
 | `github.com/solsw/pkg.Foo[int,string]` | `pkg.Foo` |
+| `github.com/solsw/pkg.(*Box[...]).Get` | `pkg.(*Box).Get` |
 | `pkg.Foo` | `pkg.Foo` |
 | `Foo` | `Foo` |
-| `` (empty) | `` (empty) |
+| `""` | `""` |
 
 #### `JustFunctionName(funcName string) string`
 
-Returns just the function name. If `funcName` contains no package separator, it is returned (with generic type parameters stripped) unchanged.
+Returns just the function name. If `funcName` contains no package separator, it is returned (with generic type arguments stripped) unchanged.
 
 | Input | Output |
 | --- | --- |
 | `github.com/solsw/pkg.Foo` | `Foo` |
 | `github.com/solsw/pkg.Foo[int,string]` | `Foo` |
+| `github.com/solsw/pkg.(*Box[...]).Get` | `(*Box).Get` |
 | `Foo` | `Foo` |
 | `Foo[int]` | `Foo` |
-| `` (empty) | `` (empty) |
+| `""` | `""` |
 
 ## Example
 
@@ -93,9 +94,26 @@ import (
 	"github.com/solsw/runtimehelper"
 )
 
-func main() {
-	full := runtimehelper.NthCallerName(1) // "main.main"
-	fmt.Println(runtimehelper.JustPackageFunctionName(full)) // "main.main"
-	fmt.Println(runtimehelper.JustFunctionName(full))        // "main"
+type Box[T any] struct{}
+
+func (*Box[T]) Get() {
+	full := runtimehelper.CallerName()
+	fmt.Println(full)
+	fmt.Println(runtimehelper.JustPackageFunctionName(full))
+	fmt.Println(runtimehelper.JustFunctionName(full))
+	fmt.Println(runtimehelper.CallerCallerName())
 }
+
+func main() {
+	new(Box[int]).Get()
+}
+```
+
+Output
+
+```text
+main.(*Box[...]).Get
+main.(*Box).Get
+(*Box).Get
+main.main
 ```

@@ -14,6 +14,20 @@ func (c Class) Method2() string {
 	return NthCallerName(1)
 }
 
+type box[T any] struct{}
+
+func (*box[T]) method() string { return CallerName() }
+
+func TestGenericReceiverName(t *testing.T) {
+	name := new(box[int]).method()
+	if got := JustPackageFunctionName(name); got != "runtimehelper.(*box).method" {
+		t.Errorf("JustPackageFunctionName(%q) = %q, want runtimehelper.(*box).method", name, got)
+	}
+	if got := JustFunctionName(name); got != "(*box).method" {
+		t.Errorf("JustFunctionName(%q) = %q, want (*box).method", name, got)
+	}
+}
+
 func TestJustPackageFunctionName(t *testing.T) {
 	tests := []struct {
 		name string
@@ -27,6 +41,10 @@ func TestJustPackageFunctionName(t *testing.T) {
 		{name: "generic",
 			nm:   "github.com/solsw/pkg.Foo[int,string]",
 			want: "pkg.Foo",
+		},
+		{name: "nested receiver argument with import path",
+			nm:   "example.org/pkg.Box[other.org/types.List[int]].Get",
+			want: "pkg.Box.Get",
 		},
 		{name: "no path separator",
 			nm:   "pkg.Foo",
